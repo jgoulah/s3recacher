@@ -4,13 +4,16 @@ S3 ReCacher is a program that allow AWS S3 Administrators to easily set (or rese
 
 ## Installation
 
-If you have Go installed, you can build it by:
+Download the code:
 
-    go install github.com/johnvilsack/s3recacher
+    go get github.com/johnvilsack/s3recacher
+
+Then build:
+    go build s3recacher
 
 ## Usage
 
-S3 Recacher does not require any other tools or frameworks to be installed.
+S3 Recacher requires Go1.3 to be installed.
 ~~~    
 Usage: s3recacher [options...] -AWS_ACCESS_KEY_ID="YOURKEYID" -AWS_SECRET_ACCESS_KEY="YOURSECRET" -bucket="YOURBUCKETID"
 
