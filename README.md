@@ -8,8 +8,7 @@ Download the code:
 
     go get github.com/johnvilsack/s3recacher
 
-Then build:
-    go build s3recacher
+Then run s3recacher from the bin/ directory!
 
 ## Usage
 
