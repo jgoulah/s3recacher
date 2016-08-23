@@ -7,12 +7,14 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/s3"
+	"github.com/AdRoll/goamz/aws"
+	"github.com/AdRoll/goamz/s3"
 )
 
 var (
 	bucketName            string
+	prefix                string
+	delimiter             string
 	fileName              string
 	results               int = 0
 	lastMarker            string
@@ -26,12 +28,14 @@ var (
 
 func init() {
 	flag.StringVar(&bucketName, "bucket", "", "Bucket Name")
+	flag.StringVar(&prefix, "prefix", "", "path within bucket")
+	flag.StringVar(&delimiter, "delimiter", "/", "delimeter to use")
 	flag.StringVar(&lastMarker, "startid", "", "Object to start with")
 	flag.StringVar(&stopMarker, "stopid", "", "Object to stop at")
 	flag.IntVar(&maxObjs, "maxobjs", 0, "Maximum number of objects to perform against")
 	flag.StringVar(&cacheAge, "age", "", "Cache-Age")
-	flag.StringVar(&AWS_ACCESS_KEY_ID, "AWS_ACCESS_KEY_ID", "", "AWS_ACCESS_KEY_ID")
-	flag.StringVar(&AWS_SECRET_ACCESS_KEY, "AWS_SECRET_ACCESS_KEY", "", "AWS_SECRET_ACCESS_KEY")
+	flag.StringVar(&AWS_ACCESS_KEY_ID, "AWS_ACCESS_KEY_ID", os.Getenv("AWS_ACCESS_KEY_ID"), "AWS_ACCESS_KEY_ID")
+	flag.StringVar(&AWS_SECRET_ACCESS_KEY, "AWS_SECRET_ACCESS_KEY", os.Getenv("AWS_SECRET_ACCESS_KEY"), "AWS_SECRET_ACCESS_KEY")
 
 }
 
@@ -71,10 +75,21 @@ func main() {
 	// Set the Bucket
 	Bucket := s.Bucket(bucketName)
 
+	doUpdate(prefix, Bucket)
+
+	log.Println("Wrote to", results, " S3 Objects. Last object was:", lastMarker)
+}
+
+func doUpdate(newprefix string, Bucket *s3.Bucket) {
 	// Initial Request - Outside Loop
-	Response, err := Bucket.List("", "", lastMarker, 1000)
+	Response, err := Bucket.List(newprefix, delimiter, lastMarker, 1000)
 	if err != nil {
 		log.Panic(err.Error())
+	}
+
+	for _, v := range Response.CommonPrefixes {
+		fmt.Printf("recursing into: %s\n", v)
+		doUpdate(v, Bucket)
 	}
 
 	// Set up the header for iterating.
@@ -86,7 +101,10 @@ func main() {
 
 	// Loop Results
 	for _, v := range Response.Contents {
-		fmt.Printf(".") // Indicator that something is happening
+		if v.Key == newprefix { // this is the directory itself
+			continue
+		}
+		fmt.Printf("updating: %s\n", bucketName+"/"+v.Key)
 		_, err := Bucket.PutCopy(v.Key, s3.PublicRead, opts, bucketName+"/"+v.Key)
 		if err != nil {
 			log.Panic(err.Error())
@@ -97,7 +115,7 @@ func main() {
 
 		if doStop == true {
 			if results == maxObjs || lastMarker == stopMarker {
-				break // End here.
+				return // End here.
 			}
 		}
 	}
@@ -109,7 +127,7 @@ func main() {
 	if Response.IsTruncated == true {
 		for {
 			// Issue List Command
-			Response, err := Bucket.List("", "", lastMarker, 1000)
+			Response, err := Bucket.List(newprefix, delimiter, lastMarker, 1000)
 			if err != nil {
 				panic(err.Error())
 			}
@@ -126,18 +144,18 @@ func main() {
 
 				if doStop == true {
 					if results == maxObjs || lastMarker == stopMarker {
-						break // End here.
+						return // End here.
 					}
 				}
 			}
 
 			if Response.IsTruncated == false {
-				break // End loop
+				return // End loop
 			} else {
 				fmt.Printf("\n")
 				log.Println("->", results, " ", lastMarker)
 			}
 		}
 	}
-	log.Println("Wrote to", results, " S3 Objects. Last object was:", lastMarker)
+
 }
