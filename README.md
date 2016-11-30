@@ -29,6 +29,9 @@ Options:
 
 The process will take time. Due to the linear access required to manipulate S3 data, there doesn't appear to be an easy way to add concurrency to speed up the process.
 
+## Example
+
+    ./s3recacher --bucket=primarydotcom --prefix=images/home/update --age=315360000
 
 ## License
 
